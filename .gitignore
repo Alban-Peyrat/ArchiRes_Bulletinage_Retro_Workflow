@@ -1,0 +1,6 @@
+.env
+__pychache__
+files
+*.pyc
+README.pdf
+PowerAutomate\external
