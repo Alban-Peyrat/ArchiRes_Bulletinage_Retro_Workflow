@@ -22,6 +22,18 @@ main(workbook: ExcelScript.Workbook)
 
 Le reste peut être géré sans problème en Javascript pour éviter qu'IntelliSense signale des dizaines d'erreurs.
 
+Pour mettre à jour la liste des localisations dans Koha, utiliser la requête SQL ci-dessous et remplacer la déclaration de la variable `kohaLocations` dans le script :
+
+``` SQL
+SELECT CONCAT(
+    "const kohaLocations = [",
+    GROUP_CONCAT(CONCAT('"', lib, '"') SEPARATOR ','),
+    "];"
+) AS typescript_array
+FROM authorised_values
+WHERE category = "LOC"
+```
+
 ### Traitements effectués par le script
 
 1. Fusion des feuilles de chaque école en une feuille unique
@@ -31,8 +43,15 @@ Le reste peut être géré sans problème en Javascript pour éviter qu'IntelliS
 1. Normalise le statut (suppression des diacritiques, suppression des espaces en début et fin, passage en minuscule)
 1. Signale une erreur si le statut d'une ligne n'est pas valide
 1. Supprime la localisation si une ligne est signalée comme manquante
+1. Si une localisation n'est pas valide, essaye de la corriger. S'il n'y arrive pas, signale une erreur
 1. Formatte correctement les dates et signale une erreur si certaines ne peuvent être interprétées
 1. Signale une erreur si certaines informations obligatoires sont absentes
+
+### Gestion du fichier de localisations
+
+* Exécuter dans Koha un rapport SQL avec la requête : `SELECT lib FROM authorised_values where category="LOC"`
+* Exporter au format CSV le fichier sous le nom *koha_locations.csv*
+* Le déposer dans dans le même dossier que le Office Script
 
 ## Étapes du flux dans Power Automate
 
