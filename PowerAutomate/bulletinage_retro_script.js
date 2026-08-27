@@ -1,6 +1,7 @@
 const kohaLocations = ["1er étage","1er étage réserve","2e étage","2e étage bureau doc","Accueil","Architectes","Architecture","Archives","Archives nationales","Arpège","Arts","Atelier documentaire","Audiovisuel","Bibliothèque","Bureau bas","Bureau doc","Bureau haut","Bureau interne","Cartothèque","Centre d'art","Centre de documentation","Passages","Construction","DSA","Espace Métier","Fonds ancien","Fonds courant","Fonds diapos","Fonds photo aérienne","Fonds régional","Fonds TPFE","Fonds travaux étudiants","GRECAU","Hors format","IPRAUS","Labo ARIA","Labo ARTOPOS","LIFAM","Laboratoires","Libre accès","Magasin","Magasin 1","Matériauthèque","Monographies","Niveau haut","PAVE","Paysage","Placard 1","RDC Réserve","Recherche","Réserve","Réserve 1","Réserve 2","Réserve 3","Réserve Mûrier","Revues","Rez de chaussée","Salle 1","Salle de lecture","Salle des archives/ouvrages doubles","Sciences humaines","Service informatique","Services administratifs","Territoire","Urbanisme","Usuels","Vidéothèque","Vitrine Prof","VRD","Inconnu","Atelier maquette","Fonds revues","Laboratoire de recherche en architecture (LRA)","Archives départementales","Fonds Auzelle","Fonds Huet","Fonds Huet ancien","Labo LAURE","Serveur ENSA","En ligne","Fonds BD","DPEA","Placard","Réserve de cours","Fonds Jean Aubert","Atelier Bois","Fonds ancien réserve","Revues réserve","Revues vitrine","Fonds travaux d'atelier","Laboratoire de recherche","Fonds Guerrand","Meuble à plans 1","Meuble à plans 2","Meuble à plans 3","Meuble à plans 4","Meuble à plans 5","Quarantaine","Littérature - BD","Espace Pédagogie","Master RBW","Escape game","Fonds Hervé Dupont","Écologie","Potager","Fonds Pinon","Fonds Pinon ancien","Mezzanine Vercors","Cohen","Mezzanine Chartreuse","Mezzanine Belledonne","Salle Ailefroide","Salle détente","Littérature grise"];
 const libCodes = ["BRDX","BRET","CLRF","GRNO","LYON","MRSL","MOPL","NNCY","NANT","NRMD","PBLV","MLVL","PVDS","PVSM","STET","STRB","TOUL","VRSL","LILL","PAYV","PAYM","IUAR","MALQ","IMVT","PLVT"]
 const mergedHeader = ["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote","SheetName"];
+const LOG = {ERR:"[1] ERROR",WAR:"[2] WARNING",INF:"[3] INFO"}
 
 function normalizeOutput(value) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
@@ -71,6 +72,7 @@ function main(workbook: ExcelScript.Workbook) {
     reportCurrentRow = addLines(reportSheet, reportCurrentRow, [[gravity,sheetName,index+1,type,message]]);
   }
   appendToReport("Gravité","Feuille","Numero de ligne","Type","Message");
+  // Yes this outputs numéro de ligne1 I'm aware
 
   // --------------- Merge worksheets ---------------
   // Original marging worksheets script created by B.Perez 20241023, wiht clean up and arragement for this project
@@ -107,9 +109,9 @@ function main(workbook: ExcelScript.Workbook) {
   // --------------- Report sheet processing ---------------
   // Check if sheets logic is fine. Should be originl count - 2 sheets because of "Modèle" & "Etat dépouillement"
   if ((originalSheetCount-2) == processedSheets) {
-    appendToReport("INFO", "Fusionnee",-2,"Nombre d'écoles traitées",processedSheets)
+    appendToReport(LOG.INF, "Fusionnee",-2,"Nombre d'écoles traitées","Total : " + processedSheets)
   } else {
-    appendToReport("ERROR", "Fusionnee",-2,"Nombre d'écoles traitées",processedSheets + "(nombre attendu : " + (originalSheetCount-2) + ")")
+    appendToReport(LOG.ERR, "Fusionnee",-2,"Nombre d'écoles traitées","Total : " + processedSheets + "(nombre attendu : " + (originalSheetCount-2) + ")")
   }
 
   // --------------- Check data ---------------
@@ -159,14 +161,14 @@ function main(workbook: ExcelScript.Workbook) {
     // -------- Force biblionumber if 80% has the same --------
     currentColName = "biblionumber";
     if ((getData(currentColName) != mainBibnb) && (mainBibnb !== null)) {
-      reportThis("WARNING","Biblionumber différent du biblionumber principal","Ancienne valeur : " + getData(currentColName));
+      reportThis(LOG.WAR,"Biblionumber différent du biblionumber principal","Ancienne valeur : " + getData(currentColName));
       fix(currentColName, mainBibnb);
     }
 
     // -------- Force branchcode to sheetname if different --------
     currentColName = "branchcode";
     if (getData(currentColName) !== sheetName) {
-      reportThis("WARNING","Branchcode différent du nom de la feuille","Branchcode : " + getData(currentColName));
+      reportThis(LOG.WAR,"Branchcode différent du nom de la feuille","Branchcode : " + getData(currentColName));
       fix(currentColName, sheetName);
     }
 
@@ -176,21 +178,21 @@ function main(workbook: ExcelScript.Workbook) {
     let newStatus = normalizeOutput(getData(currentColName));
     // Check if value is wrong
     if (!(["manquant","arrive","arrivee"].includes(newStatus))) {
-      reportThis("ERROR","Statut arrivé manquant erronné",getData(currentColName))
+      reportThis(LOG.ERR,"Statut arrivé manquant erronné",getData(currentColName))
     }
     // IF "manquant", force location to be empty
     let location = getData("Localisation");
     if ((newStatus === "manquant") && (location != "")) {
-      reportThis("INFO","Manquant, suppression de sa localisation","Ancienne valeur : " + location);
+      reportThis(LOG.INF,"Manquant, suppression de sa localisation","Ancienne valeur : " + location);
       fix("Localisation", "");
     // Else, check if location is a legal value
     } else if ((!(locationIsValid(location))) && (location != "")) {
       // If not valid, try to find a valid alternative
       let altLocation = getSimilarLocation(location);
       if (altLocation === null) {
-        reportThis("ERROR","Localisation inexistante",location);
+        reportThis(LOG.ERR,"Localisation inexistante",location);
       } else {
-        reportThis("WARNING","Correction de la localisation","Nouvelle valeur : " + altLocation + " (ancienne :" + location + ")");
+        reportThis(LOG.WAR,"Correction de la localisation","Nouvelle valeur : " + altLocation + " (ancienne :" + location + ")");
         fix("Localisation",altLocation);
       }
     }
@@ -203,7 +205,7 @@ function main(workbook: ExcelScript.Workbook) {
     ["date_parution","date_reception"].forEach((colName) => {
       let newDate = toYYYYMMDD(getData(colName));
       if (newDate === null) {
-        reportThis("ERROR","Impossible d'interpréter " + colName, "Ancienne valeur : " + getData(colName));
+        reportThis(LOG.ERR,"Impossible d'interpréter " + colName, "Ancienne valeur : " + getData(colName));
       // Don't psh an empty value to avoid triggering two errors on the same problem
       } else {
         fix(colName, newDate);
@@ -224,12 +226,35 @@ function main(workbook: ExcelScript.Workbook) {
       }
     })
     if (missingData.length > 0) {
-      appendToReport("ERROR",currentRow[getColIndex("SheetName")],row,"Informations vitales absentes","Colonnes : " + missingData.join(", "));
+      appendToReport(LOG.ERR,currentRow[getColIndex("SheetName")],row,"Informations vitales absentes","Colonnes : " + missingData.join(", "));
     }
   }
+
+  // --------------- Report data looks ---------------
+  // -------- Sort data --------
+  // Ty Copilot
+  reportSheet.getUsedRange().getSort().apply([
+      { key: 0, ascending: true }, // Gravité
+      { key: 2, ascending: true }  // Index
+    ],
+    true, // match case 
+    true // has headers
+  );
+  // -------- Fix col length --------
+  reportSheet.getUsedRange().getFormat().autofitColumns();
+  // -------- Color gravity --------
+  // Still Copilot stuff cleaned up
+  [[LOG.ERR,"#FFC7CE"], [LOG.WAR,"#FFEB9C"]].forEach((tuple) => {
+    let rule = reportSheet.getUsedRange().addConditionalFormat(
+      ExcelScript.ConditionalFormatType.containsText
+    );
+    rule.getTextComparison().setRule({
+      operator: ExcelScript.ConditionalTextOperator.contains,
+      text: tuple[0]
+    });
+    rule.getTextComparison().getFormat().getFill().setColor(tuple[1]);
+  })
 }
 
 // TO DO
-// Sort report lines by error -> warning -> INFO
-// Make display a bit easier (col lengths, color stuff)
 // TCD du nombres d'erreurs
