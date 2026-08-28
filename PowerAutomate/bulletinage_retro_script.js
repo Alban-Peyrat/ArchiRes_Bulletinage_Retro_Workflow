@@ -36,7 +36,7 @@ function toYYYYMMDD(value) {
 const kohaLocations = ["1er étage","1er étage réserve","2e étage","2e étage bureau doc","Accueil","Architectes","Architecture","Archives","Archives nationales","Arpège","Arts","Atelier documentaire","Audiovisuel","Bibliothèque","Bureau bas","Bureau doc","Bureau haut","Bureau interne","Cartothèque","Centre d'art","Centre de documentation","Passages","Construction","DSA","Espace Métier","Fonds ancien","Fonds courant","Fonds diapos","Fonds photo aérienne","Fonds régional","Fonds TPFE","Fonds travaux étudiants","GRECAU","Hors format","IPRAUS","Labo ARIA","Labo ARTOPOS","LIFAM","Laboratoires","Libre accès","Magasin","Magasin 1","Matériauthèque","Monographies","Niveau haut","PAVE","Paysage","Placard 1","RDC Réserve","Recherche","Réserve","Réserve 1","Réserve 2","Réserve 3","Réserve Mûrier","Revues","Rez de chaussée","Salle 1","Salle de lecture","Salle des archives/ouvrages doubles","Sciences humaines","Service informatique","Services administratifs","Territoire","Urbanisme","Usuels","Vidéothèque","Vitrine Prof","VRD","Inconnu","Atelier maquette","Fonds revues","Laboratoire de recherche en architecture (LRA)","Archives départementales","Fonds Auzelle","Fonds Huet","Fonds Huet ancien","Labo LAURE","Serveur ENSA","En ligne","Fonds BD","DPEA","Placard","Réserve de cours","Fonds Jean Aubert","Atelier Bois","Fonds ancien réserve","Revues réserve","Revues vitrine","Fonds travaux d'atelier","Laboratoire de recherche","Fonds Guerrand","Meuble à plans 1","Meuble à plans 2","Meuble à plans 3","Meuble à plans 4","Meuble à plans 5","Quarantaine","Littérature - BD","Espace Pédagogie","Master RBW","Escape game","Fonds Hervé Dupont","Écologie","Potager","Fonds Pinon","Fonds Pinon ancien","Mezzanine Vercors","Cohen","Mezzanine Chartreuse","Mezzanine Belledonne","Salle Ailefroide","Salle détente","Littérature grise"];
 const kohaLocationsNormalized = {};
 const libCodes = ["BRDX","BRET","CLRF","GRNO","LYON","MRSL","MOPL","NNCY","NANT","NRMD","PBLV","MLVL","PVDS","PVSM","STET","STRB","TOUL","VRSL","LILL","PAYV","PAYM","IUAR","MALQ","IMVT","PLVT"]
-const mergedHeader = ["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote","SheetName"];
+const mergedHeader = ["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote"];
 const LOG = {ERR:"[1] ERROR",WAR:"[2] WARNING",INF:"[3] INFO"}
 // Add an mapping normalized / original version of the locations to try and fix them
 let kohaLocationsIgnored = [];
@@ -52,6 +52,11 @@ kohaLocations.forEach((location) => {
 })
 
 // --------------- Variable dependant functions ---------------
+function getColIndex(name){
+  // Return the column index of a property
+  return mergedHeader.indexOf(name)
+}
+
 function locationIsValid(location) {
   // Returns if the locations is valid
   return kohaLocations.includes(location)
@@ -84,11 +89,10 @@ function main(workbook: ExcelScript.Workbook) {
     // sheet is the object, not the actual Worksheet element, data is an array of array
     sheet.sheet.getRangeByIndexes(sheet.rowIndex, 0, data.length, data[0].length).setValues(data);
     sheet.rowIndex += data.length;
-  
   }
   
   function appendToReport(gravity,sheetName,index,type,message) {
-    addLines(SHEETS.REPORT, [[gravity,sheetName,index+1,type,message]]);
+    addLines(SHEETS.REPORT, [[gravity,sheetName,index,type,message]]);
   }
   
   // --------------- Set up worksheets ---------------
@@ -99,161 +103,161 @@ function main(workbook: ExcelScript.Workbook) {
   SHEETS.REPORT.sheet.setPosition(2);
   SHEETS.MERGED.sheet.setPosition(3);
 
-  // --------------- Merge worksheets ---------------
-  // Original marging worksheets script created by B.Perez 20241023, wiht clean up and arragement for this project
-  // https://github.com/bastienperez/office-scripts-excel/blob/e7ee8fbe82f5d9b03ce8b83a9930b2785631e712/concatenate-worksheets-into-one/concatenate-worksheets-into-one.osts
-  
+  // --------------- Prepare loops ---------------
+  const data = []; // Will hold all the data until added to the sheet
   let processedSheets = 0; // Tracks number of sheets actually processed
+  const bibnbCount = {}; // Tracks each bibnb apparition and how much of them exists
+
+  // ---------------------------------------------
+  //                  FIRST LOOP
+  // ---------------------------------------------
   // Loop through each sheet
   workbook.getWorksheets().forEach((sheet) => {
-    // If sheet name is not in the expected list, leave
+    // If sheet name is not in the expected list, ignore it
     if (!(libCodes.includes(sheet.getName()))) {
       return;
     }
     processedSheets++;
 
-    // Get the data from the used range, excluding the header
-    let usedRange = sheet.getUsedRange();
-    let data = usedRange.getValues().slice(1);
-    // Add sheet name as the last column for each row
-    let dataWithSheetName = data.map(row => {
-      row.push(sheet.getName());
-      return row;
-    });
-    // Add data to the marged sheet
-    addLines(SHEETS.MERGED, dataWithSheetName);
+    // Loop through data excluding headers
+    sheet.getUsedRange().getValues().slice(1).forEach((row) => {
+      // -------- Set up utils for the loop --------
+      // ---- Function definition ----
+      function getData(name) {
+        // Return the value of a column for this row
+        return row[getColIndex(name)]
+      }
+      function fix(colName, value) {
+        // Changes the cell inside the data container
+        row[getColIndex(colName)] = value;
+      }
+      function reportThis(gravity,type,message) {
+        appendToReport(gravity,sheetName,data.length+1,type,message);
+      }
+      // ---- Name definition ----
+      let sheetName = sheet.getName();
+      let currentColName = null; // Temp just to avoid writing a billion times the same string
+
+      // -------- Force branchcode to sheetname if different --------
+      currentColName = "branchcode";
+      if (getData(currentColName) !== sheetName) {
+        reportThis(LOG.WAR,"Branchcode différent du nom de la feuille","Branchcode : " + getData(currentColName));
+        fix(currentColName, sheetName);
+      }
+
+      // -------- Store bibnb for main bibnb detection later --------
+      let bibnb = String(row[getColIndex("biblionumber")]).trim();
+      if (!(bibnb in bibnbCount)) {
+        bibnbCount[bibnb] = 0;
+      }
+      bibnbCount[bibnb]++;
+
+      // -------- Status & location --------
+      // Normalize (remove diacritic, trim, lowercase)
+      currentColName = "statut_arrive_manquant";
+      let newStatus = normalizeOutput(getData(currentColName));
+      // Check if value is wrong
+      if (!(["manquant","arrive","arrivee"].includes(newStatus)) && (getData(currentColName) != "")) {
+        reportThis(LOG.ERR,"Statut arrivé manquant erronné",getData(currentColName))
+      }
+      // IF "manquant", force location to be empty
+      let location = getData("Localisation");
+      if ((newStatus === "manquant") && (location != "")) {
+        reportThis(LOG.INF,"Manquant, suppression de sa localisation","Ancienne valeur : " + location);
+        fix("Localisation", "");
+      // Else, check if location is a legal value
+      } else if ((!(locationIsValid(location))) && (location != "")) {
+        // If not valid, try to find a valid alternative
+        let altLocation = getSimilarLocation(location);
+        if (altLocation === null) {
+          reportThis(LOG.ERR,"Localisation inexistante",location);
+        } else {
+          reportThis(LOG.WAR,"Correction de la localisation","Nouvelle valeur : " + altLocation + " (ancienne : " + location + ")");
+          fix("Localisation",altLocation);
+        }
+      }
+      // Push the normlization after all checks so we keep original value
+      fix(currentColName, newStatus);
+
+      // -------- Dates --------
+      // Convert to string and check if they're real (if interpreted from a string)
+      ["date_parution","date_reception"].forEach((colName) => {
+        let newDate = toYYYYMMDD(getData(colName));
+        if (newDate === null) {
+          reportThis(LOG.ERR,"Impossible d'interpréter " + colName, "Ancienne valeur : " + getData(colName));
+        // Don't psh an empty value to avoid triggering two errors on the same problem
+        } else {
+          fix(colName, newDate);
+        }
+      })
+
+      // -------- Push the row to the data container -------- 
+      data.push(row)
+    })
   });
+
+  // ---------------------------------------------
+  //            BETWEEN LOOP CALCULATIONS
+  // ---------------------------------------------
+  // For each bibnb, check if one is in more than 80% of lines
+  let mainBibnb = null; // 
+  for (key in bibnbCount) {
+    if (bibnbCount[key]>data.length*0.8) {
+      mainBibnb = key;
+      break;
+    }
+  }
+  // ---------------------------------------------
+  //                  SECOND LOOP
+  // ---------------------------------------------
+  data.forEach((row, index) => {
+    function getData(name) {
+      // Return the value of a column for this row
+      return row[getColIndex(name)]
+    }
+    function reportThis(gravity,type,message) {
+      // This is going to be awkward if there is no branchcode, but anyway this should not hapen. And we have the index
+      appendToReport(gravity,getData("branchcode"),index+1,type,message);
+    }
+
+    // -------- Force biblionumber if 80% has the same --------
+    let currentColName = "biblionumber";
+    if ((getData(currentColName) != mainBibnb) && (mainBibnb !== null)) {
+      reportThis(LOG.WAR,"Biblionumber différent du biblionumber principal","Ancienne valeur : " + getData(currentColName));
+      row[getColIndex(currentColName)] = mainBibnb;
+    }
+
+    // -------- Check missing vital data --------
+    // We do that in 2nd loop so we can use bibnb edition
+    let missingData = [];
+    ["branchcode","biblionumber","numero","date_parution","date_reception","statut_arrive_manquant"].forEach((colName) => {
+      if (getData(colName) == "") {
+        missingData.push(colName);
+      }
+    })
+    if (missingData.length > 0) {
+      reportThis(LOG.ERR,"Informations vitales absentes","Colonnes : " + missingData.join(", "));
+    }
+  })
+
+  // --------------- Add data to the worksheet ---------------
+  addLines(SHEETS.MERGED, data);
   SHEETS.MERGED.sheet.getUsedRange().setNumberFormatLocal("@");
   SHEETS.MERGED.sheet.getUsedRange().setNumberFormat([["@"]]);
 
   // --------------- Report sheet processing ---------------
   // Check if sheets logic is fine. Should be originl count - 2 sheets because of "Modèle" & "Etat dépouillement"
   if ((originalSheetCount-2) == processedSheets) {
-    appendToReport(LOG.INF, "Fusionnee",-2,"Nombre d'écoles traitées","Total : " + processedSheets)
+    appendToReport(LOG.INF, "Fusionnee",-1,"Nombre d'écoles traitées","Total : " + processedSheets)
   } else {
-    appendToReport(LOG.ERR, "Fusionnee",-2,"Nombre d'écoles traitées","Total : " + processedSheets + "(nombre attendu : " + (originalSheetCount-2) + ")")
-  }
-
-  // --------------- Check data ---------------
-  let mergedData = SHEETS.MERGED.sheet.getUsedRange().getValues();
-  function getColIndex(name){
-    // Return the column index of a property
-    return mergedHeader.indexOf(name)
-  }
-
-  // Check if there's a main biblionumber
-  let mainBibnb = null;
-  let bibnbCount = {};
-  for (let row = 1; row < mergedData.length; row++) {
-    let key = String(mergedData[row][getColIndex("biblionumber")]).trim();
-    // If does not exist yet, add to the object
-    if (!(key in bibnbCount)) {
-      bibnbCount[key] = 0;
-    }
-    bibnbCount[key]++;
-  }
-  // For each bibnb, check if one is in more than 80% of lines
-  for (key in bibnbCount) {
-    if (bibnbCount[key]>mergedData.length*0.8) {
-      mainBibnb = key;
-      break;
-    }
-  }
-
-  // Start at 1 to skip the headers
-  for (let row = 1; row < mergedData.length; row++) {
-    let currentRow = mergedData[row];
-    let currentColName = null; // Temp just to avoid writing a billion times the same string
-    // -------- Funciton definition --------
-    function getData(name) {
-      // Return the value of a column for this row
-      return currentRow[getColIndex(name)]
-    }
-    let sheetName = getData("SheetName");
-    function fix(colName, value) {
-      // Changes the cell inside the merged data
-      SHEETS.MERGED.sheet.getCell(row, getColIndex(colName)).setValue(value);
-    }
-    function reportThis(gravity,type,message) {
-      appendToReport(gravity,sheetName,row,type,message);
-    }
-
-    // -------- Force biblionumber if 80% has the same --------
-    currentColName = "biblionumber";
-    if ((getData(currentColName) != mainBibnb) && (mainBibnb !== null)) {
-      reportThis(LOG.WAR,"Biblionumber différent du biblionumber principal","Ancienne valeur : " + getData(currentColName));
-      fix(currentColName, mainBibnb);
-    }
-
-    // -------- Force branchcode to sheetname if different --------
-    currentColName = "branchcode";
-    if (getData(currentColName) !== sheetName) {
-      reportThis(LOG.WAR,"Branchcode différent du nom de la feuille","Branchcode : " + getData(currentColName));
-      fix(currentColName, sheetName);
-    }
-
-    // -------- Status & location --------
-    // Normalize (remove diacritic, trim, lowercase)
-    currentColName = "statut_arrive_manquant";
-    let newStatus = normalizeOutput(getData(currentColName));
-    // Check if value is wrong
-    if (!(["manquant","arrive","arrivee"].includes(newStatus)) && (getData(currentColName) != "")) {
-      reportThis(LOG.ERR,"Statut arrivé manquant erronné",getData(currentColName))
-    }
-    // IF "manquant", force location to be empty
-    let location = getData("Localisation");
-    if ((newStatus === "manquant") && (location != "")) {
-      reportThis(LOG.INF,"Manquant, suppression de sa localisation","Ancienne valeur : " + location);
-      fix("Localisation", "");
-    // Else, check if location is a legal value
-    } else if ((!(locationIsValid(location))) && (location != "")) {
-      // If not valid, try to find a valid alternative
-      let altLocation = getSimilarLocation(location);
-      if (altLocation === null) {
-        reportThis(LOG.ERR,"Localisation inexistante",location);
-      } else {
-        reportThis(LOG.WAR,"Correction de la localisation","Nouvelle valeur : " + altLocation + " (ancienne : " + location + ")");
-        fix("Localisation",altLocation);
-      }
-    }
-    // Push the normlization after all checks so we keep original value
-    // Actually the data I'm reading is not the one in cells so this changes absolutely nothing lol hihi
-    fix(currentColName, newStatus);
-
-    // -------- Dates --------
-    // Convert to string and check if they're real (if interpreted from a string)
-    ["date_parution","date_reception"].forEach((colName) => {
-      let newDate = toYYYYMMDD(getData(colName));
-      if (newDate === null) {
-        reportThis(LOG.ERR,"Impossible d'interpréter " + colName, "Ancienne valeur : " + getData(colName));
-      // Don't psh an empty value to avoid triggering two errors on the same problem
-      } else {
-        fix(colName, newDate);
-      }
-    })
-  }
-  // --------------- Check missing vital data ---------------
-  // We do that after transformation so we can see their results
-  // We could do this in the second loop, but doing it this way makes sure we do have the finalized data
-  // And tbh it's less of a apin to do hihi
-  mergedData = SHEETS.MERGED.sheet.getUsedRange().getValues();
-  for (let row = 1; row < mergedData.length; row++) {
-    let missingData = [];
-    let currentRow = mergedData[row];
-    ["branchcode","biblionumber","numero","date_parution","date_reception","statut_arrive_manquant"].forEach((colName) => {
-      if (currentRow[getColIndex(colName)] == "") {
-        missingData.push(colName);
-      }
-    })
-    if (missingData.length > 0) {
-      appendToReport(LOG.ERR,currentRow[getColIndex("SheetName")],row,"Informations vitales absentes","Colonnes : " + missingData.join(", "));
-    }
+    appendToReport(LOG.ERR, "Fusionnee",-1,"Nombre d'écoles traitées","Total : " + processedSheets + "(nombre attendu : " + (originalSheetCount-2) + ")")
   }
 
   // --------------- Report data looks ---------------
   // -------- Sort data --------
+  let reportUsedRange = SHEETS.REPORT.sheet.getUsedRange();
   // Ty Copilot
-  SHEETS.REPORT.sheet.getUsedRange().getSort().apply([
+  reportUsedRange.getSort().apply([
       { key: 0, ascending: true }, // Gravité
       { key: 2, ascending: true }  // Index
     ],
@@ -261,11 +265,11 @@ function main(workbook: ExcelScript.Workbook) {
     true // has headers
   );
   // -------- Fix col length --------
-  SHEETS.REPORT.sheet.getUsedRange().getFormat().autofitColumns();
+  reportUsedRange.getFormat().autofitColumns();
   // -------- Color gravity --------
   // Still Copilot stuff cleaned up
   [[LOG.ERR,"#FFC7CE"], [LOG.WAR,"#FFEB9C"]].forEach((tuple) => {
-    let rule = SHEETS.REPORT.sheet.getUsedRange().addConditionalFormat(
+    let rule = reportUsedRange.addConditionalFormat(
       ExcelScript.ConditionalFormatType.containsText
     );
     rule.getTextComparison().setRule({
@@ -279,7 +283,7 @@ function main(workbook: ExcelScript.Workbook) {
   // Still Copilot with clean up
   const pivotTable = SHEETS.SYNTHESIS.sheet.addPivotTable(
     "Synthese_Rapport_Erreur",
-    SHEETS.REPORT.sheet.getUsedRange(),
+    reportUsedRange,
     SHEETS.SYNTHESIS.sheet.getRange("A1")
   );
   // Rows
