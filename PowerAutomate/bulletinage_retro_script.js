@@ -33,6 +33,11 @@ function toYYYYMMDD(value) {
   let date = null;
   // Excel date
   if (/^\d+$/.test(value)) {
+    // If between 1800 & 2050, assume it's a year only
+    // This means that anything bewteen 1904-12-04 & 1905-08-11 is ignored
+    if ((parseInt(value) > 1800) && (parseInt(value) < 2050)) {
+      return value + "-01-01";
+    }
     // Copilot did the number conversion and it seems to work
     date = new Date(Math.round((value - 25569) * 86400 * 1000));
     return date.toISOString().split("T")[0];
@@ -43,6 +48,8 @@ function toYYYYMMDD(value) {
     if (!isNaN(date.getTime())) {
       return date.toISOString().split("T")[0];
     }
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+    return [value.substring(6,10),value.substring(0,2),value.substring(3,5)].join("-")
   }
   return null;
 }
@@ -177,7 +184,7 @@ function main(workbook: ExcelScript.Workbook) {
     currentColName = "statut_arrive_manquant";
     let newStatus = normalizeOutput(getData(currentColName));
     // Check if value is wrong
-    if (!(["manquant","arrive","arrivee"].includes(newStatus))) {
+    if (!(["manquant","arrive","arrivee"].includes(newStatus)) && (getData(currentColName) != "")) {
       reportThis(LOG.ERR,"Statut arrivé manquant erronné",getData(currentColName))
     }
     // IF "manquant", force location to be empty

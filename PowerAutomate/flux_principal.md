@@ -44,7 +44,8 @@ WHERE category = "LOC"
 1. Signale une erreur si le statut d'une ligne n'est pas valide
 1. Supprime la localisation si une ligne est signalée comme manquante
 1. Si une localisation n'est pas valide, essaye de la corriger. S'il n'y arrive pas, signale une erreur
-1. Formatte correctement les dates et signale une erreur si certaines ne peuvent être interprétées
+1. Formatte correctement les dates et signale une erreur si certaines ne peuvent être interprétées :
+    * Si la valeur originale d'une date est un nombre entre 1800 & 2050, est considéré comme une année et se transforme en le premier janvier de celle-ci. Ceci implique que toute date comprise entre le 04 décembre 1904 & le 11 août 1905 sera mal transformé
 1. Signale une erreur si certaines informations obligatoires sont absentes
 
 ### Gestion du fichier de localisations
