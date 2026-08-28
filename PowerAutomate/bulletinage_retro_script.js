@@ -1,31 +1,9 @@
-const kohaLocations = ["1er étage","1er étage réserve","2e étage","2e étage bureau doc","Accueil","Architectes","Architecture","Archives","Archives nationales","Arpège","Arts","Atelier documentaire","Audiovisuel","Bibliothèque","Bureau bas","Bureau doc","Bureau haut","Bureau interne","Cartothèque","Centre d'art","Centre de documentation","Passages","Construction","DSA","Espace Métier","Fonds ancien","Fonds courant","Fonds diapos","Fonds photo aérienne","Fonds régional","Fonds TPFE","Fonds travaux étudiants","GRECAU","Hors format","IPRAUS","Labo ARIA","Labo ARTOPOS","LIFAM","Laboratoires","Libre accès","Magasin","Magasin 1","Matériauthèque","Monographies","Niveau haut","PAVE","Paysage","Placard 1","RDC Réserve","Recherche","Réserve","Réserve 1","Réserve 2","Réserve 3","Réserve Mûrier","Revues","Rez de chaussée","Salle 1","Salle de lecture","Salle des archives/ouvrages doubles","Sciences humaines","Service informatique","Services administratifs","Territoire","Urbanisme","Usuels","Vidéothèque","Vitrine Prof","VRD","Inconnu","Atelier maquette","Fonds revues","Laboratoire de recherche en architecture (LRA)","Archives départementales","Fonds Auzelle","Fonds Huet","Fonds Huet ancien","Labo LAURE","Serveur ENSA","En ligne","Fonds BD","DPEA","Placard","Réserve de cours","Fonds Jean Aubert","Atelier Bois","Fonds ancien réserve","Revues réserve","Revues vitrine","Fonds travaux d'atelier","Laboratoire de recherche","Fonds Guerrand","Meuble à plans 1","Meuble à plans 2","Meuble à plans 3","Meuble à plans 4","Meuble à plans 5","Quarantaine","Littérature - BD","Espace Pédagogie","Master RBW","Escape game","Fonds Hervé Dupont","Écologie","Potager","Fonds Pinon","Fonds Pinon ancien","Mezzanine Vercors","Cohen","Mezzanine Chartreuse","Mezzanine Belledonne","Salle Ailefroide","Salle détente","Littérature grise"];
-const libCodes = ["BRDX","BRET","CLRF","GRNO","LYON","MRSL","MOPL","NNCY","NANT","NRMD","PBLV","MLVL","PVDS","PVSM","STET","STRB","TOUL","VRSL","LILL","PAYV","PAYM","IUAR","MALQ","IMVT","PLVT"]
-const mergedHeader = ["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote","SheetName"];
-const LOG = {ERR:"[1] ERROR",WAR:"[2] WARNING",INF:"[3] INFO"}
-
+// ------------------------------------------------------------
+//              Workbook free declarations
+// ------------------------------------------------------------
+// --------------- Indepent functions ---------------
 function normalizeOutput(value) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
-}
-
-// Add an mapping normalized / original version of the locations to try and fix them
-const kohaLocationsNormalized = {};
-let kohaLocationsIgnored = [];
-kohaLocations.forEach((location) => {
-  let normalized = normalizeOutput(location);
-  // Only add normalized version if it is unique
-  if ((!(normalized in kohaLocationsNormalized)) && (!(kohaLocationsIgnored.includes(normalized)))) {
-    kohaLocationsNormalized[normalized] = location;
-  } else {
-    delete kohaLocationsNormalized[normalized];
-    kohaLocationsIgnored.push(normalized); // yes it there are at laest 3 forms they're duplciated here, idc
-  }
-})
-
-function addLines(sheet, currentRow, data) {
-  // data is an array of array
-  // return the new current row
-  sheet.getRangeByIndexes(currentRow, 0, data.length, data[0].length).setValues(data);
-  return currentRow + data.length;
 }
 
 function toYYYYMMDD(value) {
@@ -54,6 +32,32 @@ function toYYYYMMDD(value) {
   return null;
 }
 
+function addLines(sheet, currentRowIndex, data) {
+  // data is an array of array
+  // return the new current row index
+  sheet.getRangeByIndexes(currentRowIndex, 0, data.length, data[0].length).setValues(data);
+  return currentRowIndex + data.length;
+}
+// --------------- Variables ---------------
+const kohaLocations = ["1er étage","1er étage réserve","2e étage","2e étage bureau doc","Accueil","Architectes","Architecture","Archives","Archives nationales","Arpège","Arts","Atelier documentaire","Audiovisuel","Bibliothèque","Bureau bas","Bureau doc","Bureau haut","Bureau interne","Cartothèque","Centre d'art","Centre de documentation","Passages","Construction","DSA","Espace Métier","Fonds ancien","Fonds courant","Fonds diapos","Fonds photo aérienne","Fonds régional","Fonds TPFE","Fonds travaux étudiants","GRECAU","Hors format","IPRAUS","Labo ARIA","Labo ARTOPOS","LIFAM","Laboratoires","Libre accès","Magasin","Magasin 1","Matériauthèque","Monographies","Niveau haut","PAVE","Paysage","Placard 1","RDC Réserve","Recherche","Réserve","Réserve 1","Réserve 2","Réserve 3","Réserve Mûrier","Revues","Rez de chaussée","Salle 1","Salle de lecture","Salle des archives/ouvrages doubles","Sciences humaines","Service informatique","Services administratifs","Territoire","Urbanisme","Usuels","Vidéothèque","Vitrine Prof","VRD","Inconnu","Atelier maquette","Fonds revues","Laboratoire de recherche en architecture (LRA)","Archives départementales","Fonds Auzelle","Fonds Huet","Fonds Huet ancien","Labo LAURE","Serveur ENSA","En ligne","Fonds BD","DPEA","Placard","Réserve de cours","Fonds Jean Aubert","Atelier Bois","Fonds ancien réserve","Revues réserve","Revues vitrine","Fonds travaux d'atelier","Laboratoire de recherche","Fonds Guerrand","Meuble à plans 1","Meuble à plans 2","Meuble à plans 3","Meuble à plans 4","Meuble à plans 5","Quarantaine","Littérature - BD","Espace Pédagogie","Master RBW","Escape game","Fonds Hervé Dupont","Écologie","Potager","Fonds Pinon","Fonds Pinon ancien","Mezzanine Vercors","Cohen","Mezzanine Chartreuse","Mezzanine Belledonne","Salle Ailefroide","Salle détente","Littérature grise"];
+const kohaLocationsNormalized = {};
+const libCodes = ["BRDX","BRET","CLRF","GRNO","LYON","MRSL","MOPL","NNCY","NANT","NRMD","PBLV","MLVL","PVDS","PVSM","STET","STRB","TOUL","VRSL","LILL","PAYV","PAYM","IUAR","MALQ","IMVT","PLVT"]
+const mergedHeader = ["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote","SheetName"];
+const LOG = {ERR:"[1] ERROR",WAR:"[2] WARNING",INF:"[3] INFO"}
+// Add an mapping normalized / original version of the locations to try and fix them
+let kohaLocationsIgnored = [];
+kohaLocations.forEach((location) => {
+  let normalized = normalizeOutput(location);
+  // Only add normalized version if it is unique
+  if ((!(normalized in kohaLocationsNormalized)) && (!(kohaLocationsIgnored.includes(normalized)))) {
+    kohaLocationsNormalized[normalized] = location;
+  } else {
+    delete kohaLocationsNormalized[normalized];
+    kohaLocationsIgnored.push(normalized); // yes it there are at laest 3 forms they're duplciated here, idc
+  }
+})
+
+// --------------- Variable dependant functions ---------------
 function locationIsValid(location) {
   // Returns if the locations is valid
   return kohaLocations.includes(location)
@@ -68,12 +72,14 @@ function getSimilarLocation(location) {
   return null;
 }
 
-
+// ------------------------------------------------------------
+//                      MAIN 
+// ------------------------------------------------------------
 // Do not ever remove ": ExcelScript.Workbook" or the script will fail
 function main(workbook: ExcelScript.Workbook) {
-  let originalSheetCount = workbook.getWorksheets().length; // Store now the original sheet count
+  const originalSheetCount = workbook.getWorksheets().length; // Store now the original sheet count
   // Create a new worksheet for the report & add the header
-  let reportSheet = workbook.addWorksheet("Erreurs");
+  const reportSheet = workbook.addWorksheet("Erreurs");
   let reportCurrentRow = 0; // This will track the line in report sheet
   function appendToReport(gravity,sheetName,index,type,message) {
     reportCurrentRow = addLines(reportSheet, reportCurrentRow, [[gravity,sheetName,index+1,type,message]]);
@@ -86,7 +92,7 @@ function main(workbook: ExcelScript.Workbook) {
   // https://github.com/bastienperez/office-scripts-excel/blob/e7ee8fbe82f5d9b03ce8b83a9930b2785631e712/concatenate-worksheets-into-one/concatenate-worksheets-into-one.osts
   
   // Create a new worksheet for the combined data & add the header
-  let mergedSheet = workbook.addWorksheet("Fusionnee");
+  const mergedSheet = workbook.addWorksheet("Fusionnee");
   let mergedCurrentRow = 0; // This will track the line in combined sheet
   let processedSheets = 0; // Tracks number of sheets actually processed
   mergedCurrentRow = addLines(mergedSheet, mergedCurrentRow, [mergedHeader]);
@@ -264,8 +270,8 @@ function main(workbook: ExcelScript.Workbook) {
 
   // --------------- Synthesis with pivot table ---------------
   // Still Copilot with clean up
-  let synthesisSheet = workbook.addWorksheet("Synthese");
-  let pivotTable = synthesisSheet.addPivotTable(
+  const synthesisSheet = workbook.addWorksheet("Synthese");
+  const pivotTable = synthesisSheet.addPivotTable(
     "Synthese_Rapport_Erreur",
     reportSheet.getUsedRange(),
     synthesisSheet.getRange("A1")
