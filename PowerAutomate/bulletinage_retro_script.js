@@ -35,9 +35,10 @@ function toYYYYMMDD(value) {
 // --------------- Variables ---------------
 const kohaLocations = ["1er étage","1er étage réserve","2e étage","2e étage bureau doc","Accueil","Architectes","Architecture","Archives","Archives nationales","Arpège","Arts","Atelier documentaire","Audiovisuel","Bibliothèque","Bureau bas","Bureau doc","Bureau haut","Bureau interne","Cartothèque","Centre d'art","Centre de documentation","Passages","Construction","DSA","Espace Métier","Fonds ancien","Fonds courant","Fonds diapos","Fonds photo aérienne","Fonds régional","Fonds TPFE","Fonds travaux étudiants","GRECAU","Hors format","IPRAUS","Labo ARIA","Labo ARTOPOS","LIFAM","Laboratoires","Libre accès","Magasin","Magasin 1","Matériauthèque","Monographies","Niveau haut","PAVE","Paysage","Placard 1","RDC Réserve","Recherche","Réserve","Réserve 1","Réserve 2","Réserve 3","Réserve Mûrier","Revues","Rez de chaussée","Salle 1","Salle de lecture","Salle des archives/ouvrages doubles","Sciences humaines","Service informatique","Services administratifs","Territoire","Urbanisme","Usuels","Vidéothèque","Vitrine Prof","VRD","Inconnu","Atelier maquette","Fonds revues","Laboratoire de recherche en architecture (LRA)","Archives départementales","Fonds Auzelle","Fonds Huet","Fonds Huet ancien","Labo LAURE","Serveur ENSA","En ligne","Fonds BD","DPEA","Placard","Réserve de cours","Fonds Jean Aubert","Atelier Bois","Fonds ancien réserve","Revues réserve","Revues vitrine","Fonds travaux d'atelier","Laboratoire de recherche","Fonds Guerrand","Meuble à plans 1","Meuble à plans 2","Meuble à plans 3","Meuble à plans 4","Meuble à plans 5","Quarantaine","Littérature - BD","Espace Pédagogie","Master RBW","Escape game","Fonds Hervé Dupont","Écologie","Potager","Fonds Pinon","Fonds Pinon ancien","Mezzanine Vercors","Cohen","Mezzanine Chartreuse","Mezzanine Belledonne","Salle Ailefroide","Salle détente","Littérature grise"];
 const kohaLocationsNormalized = {};
-const libCodes = ["BRDX","BRET","CLRF","GRNO","LYON","MRSL","MOPL","NNCY","NANT","NRMD","PBLV","MLVL","PVDS","PVSM","STET","STRB","TOUL","VRSL","LILL","PAYV","PAYM","IUAR","MALQ","IMVT","PLVT"]
+const libCodes = ["BRDX","BRET","CLRF","GRNO","LYON","MRSL","MOPL","NNCY","NANT","NRMD","PBLV","MLVL","PVDS","PVSM","STET","STRB","TOUL","VRSL","LILL","PAYV","PAYM","IUAR","MALQ","IMVT","PLVT"];
 const mergedHeader = ["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote"];
-const LOG = {ERR:"[1] ERROR",WAR:"[2] WARNING",INF:"[3] INFO"}
+const LOG = {ERR:"[1] ERROR",WAR:"[2] WARNING",INF:"[3] INFO"};
+const reportData = [];
 // Add an mapping normalized / original version of the locations to try and fix them
 let kohaLocationsIgnored = [];
 kohaLocations.forEach((location) => {
@@ -55,6 +56,10 @@ kohaLocations.forEach((location) => {
 function getColIndex(name){
   // Return the column index of a property
   return mergedHeader.indexOf(name)
+}
+
+function appendToReport(gravity,sheetName,index,type,message) {
+  reportData.push([gravity,sheetName,index,type,message]);
 }
 
 function locationIsValid(location) {
@@ -89,10 +94,6 @@ function main(workbook: ExcelScript.Workbook) {
     // sheet is the object, not the actual Worksheet element, data is an array of array
     sheet.sheet.getRangeByIndexes(sheet.rowIndex, 0, data.length, data[0].length).setValues(data);
     sheet.rowIndex += data.length;
-  }
-  
-  function appendToReport(gravity,sheetName,index,type,message) {
-    addLines(SHEETS.REPORT, [[gravity,sheetName,index,type,message]]);
   }
   
   // --------------- Set up worksheets ---------------
@@ -240,11 +241,6 @@ function main(workbook: ExcelScript.Workbook) {
     }
   })
 
-  // --------------- Add data to the worksheet ---------------
-  addLines(SHEETS.MERGED, data);
-  SHEETS.MERGED.sheet.getUsedRange().setNumberFormatLocal("@");
-  SHEETS.MERGED.sheet.getUsedRange().setNumberFormat([["@"]]);
-
   // --------------- Report sheet processing ---------------
   // Check if sheets logic is fine. Should be originl count - 2 sheets because of "Modèle" & "Etat dépouillement"
   if ((originalSheetCount-2) == processedSheets) {
@@ -252,6 +248,12 @@ function main(workbook: ExcelScript.Workbook) {
   } else {
     appendToReport(LOG.ERR, "Fusionnee",-1,"Nombre d'écoles traitées","Total : " + processedSheets + "(nombre attendu : " + (originalSheetCount-2) + ")")
   }
+
+  // --------------- Add data to the worksheets ---------------
+  addLines(SHEETS.REPORT, reportData);
+  addLines(SHEETS.MERGED, data);
+  SHEETS.MERGED.sheet.getUsedRange().setNumberFormatLocal("@");
+  SHEETS.MERGED.sheet.getUsedRange().setNumberFormat([["@"]]);
 
   // --------------- Report data looks ---------------
   // -------- Sort data --------
