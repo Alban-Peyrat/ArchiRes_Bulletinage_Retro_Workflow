@@ -37,6 +37,7 @@ const kohaLocations = ["1er étage","1er étage réserve","2e étage","2e étage
 const kohaLocationsNormalized = {};
 const libCodes = ["BRDX","BRET","CLRF","GRNO","LYON","MRSL","MOPL","NNCY","NANT","NRMD","PBLV","MLVL","PVDS","PVSM","STET","STRB","TOUL","VRSL","LILL","PAYV","PAYM","IUAR","MALQ","IMVT","PLVT"];
 const mergedHeader = ["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote"];
+const colIndex = Object.fromEntries(mergedHeader.map((name, index) => [name, index])); // Ty copilot
 const LOG = {ERR:"[1] ERROR",WAR:"[2] WARNING",INF:"[3] INFO"};
 const reportData = [];
 // Add an mapping normalized / original version of the locations to try and fix them
@@ -53,11 +54,6 @@ kohaLocations.forEach((location) => {
 })
 
 // --------------- Variable dependant functions ---------------
-function getColIndex(name){
-  // Return the column index of a property
-  return mergedHeader.indexOf(name)
-}
-
 function appendToReport(gravity,sheetName,index,type,message) {
   reportData.push([gravity,sheetName,index,type,message]);
 }
@@ -126,11 +122,11 @@ function main(workbook: ExcelScript.Workbook) {
       // ---- Function definition ----
       function getData(name) {
         // Return the value of a column for this row
-        return row[getColIndex(name)]
+        return row[colIndex[name]]
       }
       function fix(colName, value) {
         // Changes the cell inside the data container
-        row[getColIndex(colName)] = value;
+        row[colIndex[colName]] = value;
       }
       function reportThis(gravity,type,message) {
         appendToReport(gravity,sheetName,data.length+1,type,message);
@@ -147,7 +143,7 @@ function main(workbook: ExcelScript.Workbook) {
       }
 
       // -------- Store bibnb for main bibnb detection later --------
-      let bibnb = String(row[getColIndex("biblionumber")]).trim();
+      let bibnb = String(getData("biblionumber")).trim();
       if (!(bibnb in bibnbCount)) {
         bibnbCount[bibnb] = 0;
       }
@@ -214,7 +210,7 @@ function main(workbook: ExcelScript.Workbook) {
   data.forEach((row, index) => {
     function getData(name) {
       // Return the value of a column for this row
-      return row[getColIndex(name)]
+      return row[colIndex[name]]
     }
     function reportThis(gravity,type,message) {
       // This is going to be awkward if there is no branchcode, but anyway this should not hapen. And we have the index
@@ -225,7 +221,7 @@ function main(workbook: ExcelScript.Workbook) {
     let currentColName = "biblionumber";
     if ((getData(currentColName) != mainBibnb) && (mainBibnb !== null)) {
       reportThis(LOG.WAR,"Biblionumber différent du biblionumber principal","Ancienne valeur : " + getData(currentColName));
-      row[getColIndex(currentColName)] = mainBibnb;
+      row[colIndex[currentColName]] = mainBibnb;
     }
 
     // -------- Check missing vital data --------
