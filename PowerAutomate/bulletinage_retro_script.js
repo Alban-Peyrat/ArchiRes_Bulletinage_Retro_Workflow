@@ -32,12 +32,6 @@ function toYYYYMMDD(value) {
   return null;
 }
 
-function addLines(sheet, currentRowIndex, data) {
-  // data is an array of array
-  // return the new current row index
-  sheet.getRangeByIndexes(currentRowIndex, 0, data.length, data[0].length).setValues(data);
-  return currentRowIndex + data.length;
-}
 // --------------- Variables ---------------
 const kohaLocations = ["1er étage","1er étage réserve","2e étage","2e étage bureau doc","Accueil","Architectes","Architecture","Archives","Archives nationales","Arpège","Arts","Atelier documentaire","Audiovisuel","Bibliothèque","Bureau bas","Bureau doc","Bureau haut","Bureau interne","Cartothèque","Centre d'art","Centre de documentation","Passages","Construction","DSA","Espace Métier","Fonds ancien","Fonds courant","Fonds diapos","Fonds photo aérienne","Fonds régional","Fonds TPFE","Fonds travaux étudiants","GRECAU","Hors format","IPRAUS","Labo ARIA","Labo ARTOPOS","LIFAM","Laboratoires","Libre accès","Magasin","Magasin 1","Matériauthèque","Monographies","Niveau haut","PAVE","Paysage","Placard 1","RDC Réserve","Recherche","Réserve","Réserve 1","Réserve 2","Réserve 3","Réserve Mûrier","Revues","Rez de chaussée","Salle 1","Salle de lecture","Salle des archives/ouvrages doubles","Sciences humaines","Service informatique","Services administratifs","Territoire","Urbanisme","Usuels","Vidéothèque","Vitrine Prof","VRD","Inconnu","Atelier maquette","Fonds revues","Laboratoire de recherche en architecture (LRA)","Archives départementales","Fonds Auzelle","Fonds Huet","Fonds Huet ancien","Labo LAURE","Serveur ENSA","En ligne","Fonds BD","DPEA","Placard","Réserve de cours","Fonds Jean Aubert","Atelier Bois","Fonds ancien réserve","Revues réserve","Revues vitrine","Fonds travaux d'atelier","Laboratoire de recherche","Fonds Guerrand","Meuble à plans 1","Meuble à plans 2","Meuble à plans 3","Meuble à plans 4","Meuble à plans 5","Quarantaine","Littérature - BD","Espace Pédagogie","Master RBW","Escape game","Fonds Hervé Dupont","Écologie","Potager","Fonds Pinon","Fonds Pinon ancien","Mezzanine Vercors","Cohen","Mezzanine Chartreuse","Mezzanine Belledonne","Salle Ailefroide","Salle détente","Littérature grise"];
 const kohaLocationsNormalized = {};
@@ -78,25 +72,38 @@ function getSimilarLocation(location) {
 // Do not ever remove ": ExcelScript.Workbook" or the script will fail
 function main(workbook: ExcelScript.Workbook) {
   const originalSheetCount = workbook.getWorksheets().length; // Store now the original sheet count
-  // Create a new worksheet for the report & add the header
-  const reportSheet = workbook.addWorksheet("Erreurs");
-  let reportCurrentRow = 0; // This will track the line in report sheet
-  function appendToReport(gravity,sheetName,index,type,message) {
-    reportCurrentRow = addLines(reportSheet, reportCurrentRow, [[gravity,sheetName,index+1,type,message]]);
+  // --------------- Create all worksheets ---------------
+  const SHEETS = {
+    REPORT:{sheet:workbook.addWorksheet("Erreurs"),rowIndex:0},
+    MERGED:{sheet:workbook.addWorksheet("Fusionnee"),rowIndex:0},
+    SYNTHESIS:{sheet:workbook.addWorksheet("Synthese"),rowIndex:0}
   }
-  appendToReport("Gravité","Feuille","Numero de ligne","Type","Message");
-  // Yes this outputs numéro de ligne1 I'm aware
+
+  // --------------- Define workbook functions ---------------
+  function addLines(sheet, data) {
+    // sheet is the object, not the actual Worksheet element, data is an array of array
+    sheet.sheet.getRangeByIndexes(sheet.rowIndex, 0, data.length, data[0].length).setValues(data);
+    sheet.rowIndex += data.length;
+  
+  }
+  
+  function appendToReport(gravity,sheetName,index,type,message) {
+    addLines(SHEETS.REPORT, [[gravity,sheetName,index+1,type,message]]);
+  }
+  
+  // --------------- Set up worksheets ---------------
+  // Add headers on relevent sheets
+  addLines(SHEETS.MERGED, [mergedHeader]);
+  appendToReport("Gravité","Feuille","Numero de ligne","Type","Message"); // Yes this outputs numéro de ligne1 I'm aware
+  SHEETS.SYNTHESIS.sheet.setPosition(1);
+  SHEETS.REPORT.sheet.setPosition(2);
+  SHEETS.MERGED.sheet.setPosition(3);
 
   // --------------- Merge worksheets ---------------
   // Original marging worksheets script created by B.Perez 20241023, wiht clean up and arragement for this project
   // https://github.com/bastienperez/office-scripts-excel/blob/e7ee8fbe82f5d9b03ce8b83a9930b2785631e712/concatenate-worksheets-into-one/concatenate-worksheets-into-one.osts
   
-  // Create a new worksheet for the combined data & add the header
-  const mergedSheet = workbook.addWorksheet("Fusionnee");
-  let mergedCurrentRow = 0; // This will track the line in combined sheet
   let processedSheets = 0; // Tracks number of sheets actually processed
-  mergedCurrentRow = addLines(mergedSheet, mergedCurrentRow, [mergedHeader]);
-
   // Loop through each sheet
   workbook.getWorksheets().forEach((sheet) => {
     // If sheet name is not in the expected list, leave
@@ -114,10 +121,10 @@ function main(workbook: ExcelScript.Workbook) {
       return row;
     });
     // Add data to the marged sheet
-    mergedCurrentRow = addLines(mergedSheet, mergedCurrentRow, dataWithSheetName);
+    addLines(SHEETS.MERGED, dataWithSheetName);
   });
-  mergedSheet.getUsedRange().setNumberFormatLocal("@");
-  mergedSheet.getUsedRange().setNumberFormat([["@"]]);
+  SHEETS.MERGED.sheet.getUsedRange().setNumberFormatLocal("@");
+  SHEETS.MERGED.sheet.getUsedRange().setNumberFormat([["@"]]);
 
   // --------------- Report sheet processing ---------------
   // Check if sheets logic is fine. Should be originl count - 2 sheets because of "Modèle" & "Etat dépouillement"
@@ -128,7 +135,7 @@ function main(workbook: ExcelScript.Workbook) {
   }
 
   // --------------- Check data ---------------
-  let mergedData = mergedSheet.getUsedRange().getValues();
+  let mergedData = SHEETS.MERGED.sheet.getUsedRange().getValues();
   function getColIndex(name){
     // Return the column index of a property
     return mergedHeader.indexOf(name)
@@ -165,7 +172,7 @@ function main(workbook: ExcelScript.Workbook) {
     let sheetName = getData("SheetName");
     function fix(colName, value) {
       // Changes the cell inside the merged data
-      mergedSheet.getCell(row, getColIndex(colName)).setValue(value);
+      SHEETS.MERGED.sheet.getCell(row, getColIndex(colName)).setValue(value);
     }
     function reportThis(gravity,type,message) {
       appendToReport(gravity,sheetName,row,type,message);
@@ -229,7 +236,7 @@ function main(workbook: ExcelScript.Workbook) {
   // We do that after transformation so we can see their results
   // We could do this in the second loop, but doing it this way makes sure we do have the finalized data
   // And tbh it's less of a apin to do hihi
-  mergedData = mergedSheet.getUsedRange().getValues();
+  mergedData = SHEETS.MERGED.sheet.getUsedRange().getValues();
   for (let row = 1; row < mergedData.length; row++) {
     let missingData = [];
     let currentRow = mergedData[row];
@@ -246,7 +253,7 @@ function main(workbook: ExcelScript.Workbook) {
   // --------------- Report data looks ---------------
   // -------- Sort data --------
   // Ty Copilot
-  reportSheet.getUsedRange().getSort().apply([
+  SHEETS.REPORT.sheet.getUsedRange().getSort().apply([
       { key: 0, ascending: true }, // Gravité
       { key: 2, ascending: true }  // Index
     ],
@@ -254,11 +261,11 @@ function main(workbook: ExcelScript.Workbook) {
     true // has headers
   );
   // -------- Fix col length --------
-  reportSheet.getUsedRange().getFormat().autofitColumns();
+  SHEETS.REPORT.sheet.getUsedRange().getFormat().autofitColumns();
   // -------- Color gravity --------
   // Still Copilot stuff cleaned up
   [[LOG.ERR,"#FFC7CE"], [LOG.WAR,"#FFEB9C"]].forEach((tuple) => {
-    let rule = reportSheet.getUsedRange().addConditionalFormat(
+    let rule = SHEETS.REPORT.sheet.getUsedRange().addConditionalFormat(
       ExcelScript.ConditionalFormatType.containsText
     );
     rule.getTextComparison().setRule({
@@ -270,11 +277,10 @@ function main(workbook: ExcelScript.Workbook) {
 
   // --------------- Synthesis with pivot table ---------------
   // Still Copilot with clean up
-  const synthesisSheet = workbook.addWorksheet("Synthese");
-  const pivotTable = synthesisSheet.addPivotTable(
+  const pivotTable = SHEETS.SYNTHESIS.sheet.addPivotTable(
     "Synthese_Rapport_Erreur",
-    reportSheet.getUsedRange(),
-    synthesisSheet.getRange("A1")
+    SHEETS.REPORT.sheet.getUsedRange(),
+    SHEETS.SYNTHESIS.sheet.getRange("A1")
   );
   // Rows
   pivotTable.addRowHierarchy(pivotTable.getHierarchy("Gravité"));
@@ -287,9 +293,4 @@ function main(workbook: ExcelScript.Workbook) {
   );
   dataField.setSummarizeBy(ExcelScript.AggregationFunction.count);
   dataField.setName("Nombre de lignes");
-
-  // --------------- SOrt the sheets ---------------
-  synthesisSheet.setPosition(1);
-  reportSheet.setPosition(2);
-  mergedSheet.setPosition(3);
 }
