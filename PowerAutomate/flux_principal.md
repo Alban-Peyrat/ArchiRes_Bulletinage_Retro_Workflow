@@ -55,24 +55,54 @@ WHERE category = "LOC"
 
 ## Étapes du flux dans Power Automate
 
-_Mettre au propre quand le flux théorique est correctement défini_
+* 1) Déclencheur : _SharePoint : When a file is created or modified (properties only)_ :
+  * _Site Address_ : SharePoint du SID ArchiRès
+  * _Library Name_ : _Documents_
+  * _Advanced parameters → Folder_ : le dossier dédié aux fichiers originaux
+* 2) _Initialize variable_ :
+  * _Name_ : _MailOutput_
+  * _Type_ : _String_
+  * _Value_ : laisser vide
+* 2) _Condition_ :
+  * Opérateur : _Or_
+  * _Nom de fichier avec l'extension_ → _ends with_ → _.ods_
+  * _Nom de fichier avec l'extension_ → _ends with_ → _.xlsx_
 
-```
-Déclencheru :
-When a nw mail arrive V3 on specific folder
-Apply to each : Attachments
-Condition : AttachmentName contains /xlsx
-Get attachment : Message Is = Message Id ; Attachnment Id = attachment id
-Crteate file : Folder path = /ArchiRes_Auto/received ; File Name = Get Attachment Name ; File content = Get aatttahcment content bytes
-Copy File : File = CreateFile Id ; Destination = `concat('/ArchiRes_Auto/edited/', outputs('Create_file')?['body/DisplayName'])`
-Run script from sharepoint lirbary:
-* OneDrive for Bsuiness
-* OneDrive
-* `concat('/ArchiRes_Auto/edited/', outputs('Copy_file')?['body/Name'])`
-* OneDrive for Bsuiness
-* OneDrive
-* /ArchiRes_Auto/concatenate-worksheets-into-one.osts
-```
+Dans _True_ :
+
+* 3) _SharePoint : Get file content using path_ :
+  * _Note: pour je ne sais quelle raison, la récupération via ID renvoyait une erreur 404 donc bon_
+  * _Site Address_ : SharePoint du SID ArchiRès
+  * _File Path_ : `concat('/Documents partages/Bulletinage_Retro/Originaux/',triggerBody()?['{FilenameWithExtension}'])` 
+    * `triggerBody()?['{FilenameWithExtension}']` = _Nom de fichier avec l'extension_
+* 4) _SharePoint : Create File_ :
+  * _Site Address_ : SharePoint du SID ArchiRès
+  * _Folder Path_ : le dossier dédié aux fichiers de sortie
+  * _File Name_ : _Nom de fichier avec l'extension_
+  * _File Content_ : _File content_ de l'étape précédente
+* 5) _Excel Online (Business) : Run script from SharePoint library_ :
+  * _Workbook Location_ : SharePoint du SID ArchiRès
+  * _Workbook Library_ : _Documents_
+  * _Workbook_ : `concat('/Bulletinage_Retro/Resultat/',triggerBody()?['{FilenameWithExtension}'])`
+    * `triggerBody()?['{FilenameWithExtension}']` = _Nom de fichier avec l'extension_ de la première étape
+  * _Script Location_ : _OneDrive for Business_
+  * _Script Library_ : _OneDrive_
+  * _Script_ : sélectionner le fichier _.osts_ du script
+* X) _Set variable_ :
+  * _Name_ : _MailOutput_
+  * _Value_ : `concat('Fichier ', triggerBody()?['{FilenameWithExtension}'],' correctement traité et disponible dans Bulletinage_Retro/Resultat.')`
+    * `triggerBody()?['{FilenameWithExtension}']` = _Nom de fichier avec l'extension_ de la première étape
+  * _Settings_ → _Run after_ : _Run script from SharePoint library_ seulement en cas de succès
+* X) _Set variable_ :
+  * _Name_ : _MailOutput_
+  * _Value_ : `concat('Le fichier ', triggerBody()?['{FilenameWithExtension}'],' n a pas pu être traité.')`
+    * `triggerBody()?['{FilenameWithExtension}']` = _Nom de fichier avec l'extension_ de la première étape
+  * _Settings_ → _Run after_ : _Run script from SharePoint library_ sauf en cas de succès
+* X) _Office 365 Outlook : Send an email (V2)_ :
+  * _To_ : destinaires
+  * _Subject_ : `[SID ArchiRès PA] Bulletinage rétrospectif : traitement du fichier` + _Nom de fichier avec l'extension_ de la première étape
+  * _Body_ : variable _Mailoutput_
+  * _Settings_ : dans tous les cas après les 2 set variable _mailOutput_
 
 ## Ressources
 

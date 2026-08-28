@@ -66,7 +66,7 @@ function getSimilarLocation(location) {
 function main(workbook: ExcelScript.Workbook) {
   let originalSheetCount = workbook.getWorksheets().length; // Store now the original sheet count
   // Create a new worksheet for the report & add the header
-  let reportSheet = workbook.addWorksheet("Report");
+  let reportSheet = workbook.addWorksheet("Erreurs");
   let reportCurrentRow = 0; // This will track the line in report sheet
   function appendToReport(gravity,sheetName,index,type,message) {
     reportCurrentRow = addLines(reportSheet, reportCurrentRow, [[gravity,sheetName,index+1,type,message]]);
@@ -192,7 +192,7 @@ function main(workbook: ExcelScript.Workbook) {
       if (altLocation === null) {
         reportThis(LOG.ERR,"Localisation inexistante",location);
       } else {
-        reportThis(LOG.WAR,"Correction de la localisation","Nouvelle valeur : " + altLocation + " (ancienne :" + location + ")");
+        reportThis(LOG.WAR,"Correction de la localisation","Nouvelle valeur : " + altLocation + " (ancienne : " + location + ")");
         fix("Localisation",altLocation);
       }
     }
@@ -254,7 +254,29 @@ function main(workbook: ExcelScript.Workbook) {
     });
     rule.getTextComparison().getFormat().getFill().setColor(tuple[1]);
   })
-}
 
-// TO DO
-// TCD du nombres d'erreurs
+  // --------------- Synthesis with pivot table ---------------
+  // Still Copilot with clean up
+  let synthesisSheet = workbook.addWorksheet("Synthese");
+  let pivotTable = synthesisSheet.addPivotTable(
+    "Synthese_Rapport_Erreur",
+    reportSheet.getUsedRange(),
+    synthesisSheet.getRange("A1")
+  );
+  // Rows
+  pivotTable.addRowHierarchy(pivotTable.getHierarchy("Gravité"));
+  pivotTable.addRowHierarchy(pivotTable.getHierarchy("Type"));
+  // Columns
+  pivotTable.addColumnHierarchy(pivotTable.getHierarchy("Feuille"));
+  // Count rows
+  let dataField = pivotTable.addDataHierarchy(
+    pivotTable.getHierarchy("Message")
+  );
+  dataField.setSummarizeBy(ExcelScript.AggregationFunction.count);
+  dataField.setName("Nombre de lignes");
+
+  // --------------- SOrt the sheets ---------------
+  synthesisSheet.setPosition(1);
+  reportSheet.setPosition(2);
+  mergedSheet.setPosition(3);
+}
