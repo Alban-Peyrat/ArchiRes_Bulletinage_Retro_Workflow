@@ -36,8 +36,17 @@ function toYYYYMMDD(value) {
 const kohaLocations = ["1er étage","1er étage réserve","2e étage","2e étage bureau doc","Accueil","Architectes","Architecture","Archives","Archives nationales","Arpège","Arts","Atelier documentaire","Audiovisuel","Bibliothèque","Bureau bas","Bureau doc","Bureau haut","Bureau interne","Cartothèque","Centre d'art","Centre de documentation","Passages","Construction","DSA","Espace Métier","Fonds ancien","Fonds courant","Fonds diapos","Fonds photo aérienne","Fonds régional","Fonds TPFE","Fonds travaux étudiants","GRECAU","Hors format","IPRAUS","Labo ARIA","Labo ARTOPOS","LIFAM","Laboratoires","Libre accès","Magasin","Magasin 1","Matériauthèque","Monographies","Niveau haut","PAVE","Paysage","Placard 1","RDC Réserve","Recherche","Réserve","Réserve 1","Réserve 2","Réserve 3","Réserve Mûrier","Revues","Rez de chaussée","Salle 1","Salle de lecture","Salle des archives/ouvrages doubles","Sciences humaines","Service informatique","Services administratifs","Territoire","Urbanisme","Usuels","Vidéothèque","Vitrine Prof","VRD","Inconnu","Atelier maquette","Fonds revues","Laboratoire de recherche en architecture (LRA)","Archives départementales","Fonds Auzelle","Fonds Huet","Fonds Huet ancien","Labo LAURE","Serveur ENSA","En ligne","Fonds BD","DPEA","Placard","Réserve de cours","Fonds Jean Aubert","Atelier Bois","Fonds ancien réserve","Revues réserve","Revues vitrine","Fonds travaux d'atelier","Laboratoire de recherche","Fonds Guerrand","Meuble à plans 1","Meuble à plans 2","Meuble à plans 3","Meuble à plans 4","Meuble à plans 5","Quarantaine","Littérature - BD","Espace Pédagogie","Master RBW","Escape game","Fonds Hervé Dupont","Écologie","Potager","Fonds Pinon","Fonds Pinon ancien","Mezzanine Vercors","Cohen","Mezzanine Chartreuse","Mezzanine Belledonne","Salle Ailefroide","Salle détente","Littérature grise"];
 const kohaLocationsNormalized = {};
 const libCodes = ["BRDX","BRET","CLRF","GRNO","LYON","MRSL","MOPL","NNCY","NANT","NRMD","PBLV","MLVL","PVDS","PVSM","STET","STRB","TOUL","VRSL","LILL","PAYV","PAYM","IUAR","MALQ","IMVT","PLVT"];
-const mergedHeader = ["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote"];
-const colIndex = Object.fromEntries(mergedHeader.map((name, index) => [name, index])); // Ty copilot
+const headers = {
+  "branchcode":{index:0,forms:["branchcode","code_ecole"]},
+  "biblionumber":{index:1,forms:["biblionumber"]},
+  "no_abonnement_koha":{index:2,forms:["no_abonnement_koha","no_abonnement_koha"]},
+  "numero":{index:3,forms:["numero"]},
+  "date_parution":{index:4,forms:["date_parution"]},
+  "date_reception":{index:5,forms:["date_reception"]},
+  "statut_arrive_manquant":{index:6,forms:["statut_arrive_manquant"]},
+  "Localisation":{index:7,forms:["localisation"]},
+  "Cote":{index:8,forms:["cote"]},
+}
 const LOG = {ERR:"[1] ERROR",WAR:"[2] WARNING",INF:"[3] INFO"};
 const reportData = [];
 // Add an mapping normalized / original version of the locations to try and fix them
@@ -94,8 +103,9 @@ function main(workbook: ExcelScript.Workbook) {
   
   // --------------- Set up worksheets ---------------
   // Add headers on relevent sheets
-  addLines(SHEETS.MERGED, [mergedHeader]);
-  appendToReport("Gravité","Feuille","Numero de ligne","Type","Message"); // Yes this outputs numéro de ligne1 I'm aware
+  // yeah I'm hard coding, anyway I'm gonna switch to multiple files so I'll have to deal with array position anyway
+  addLines(SHEETS.MERGED, [["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote"]]);
+  appendToReport("Gravité","Feuille","Numero de ligne","Type","Message");
   SHEETS.SYNTHESIS.sheet.setPosition(1);
   SHEETS.REPORT.sheet.setPosition(2);
   SHEETS.MERGED.sheet.setPosition(3);
@@ -116,17 +126,48 @@ function main(workbook: ExcelScript.Workbook) {
     }
     processedSheets++;
 
+    let values = sheet.getUsedRange().getValues();
+
+    // Get column index in this sheet
+    let thisSheetColIndex = {};
+    let thisSheetHeaders = values[0].map((txt) => normalizeOutput(String(txt)));
+    Object.keys(headers).forEach((key) => {
+      thisSheetColIndex[key] = -1;
+      thisSheetHeaders.forEach((txt, index) => {
+        if (headers[key].forms.includes(txt)) {
+          thisSheetColIndex[key] = index;
+          return
+        }
+      })
+    })
     // Loop through data excluding headers
-    sheet.getUsedRange().getValues().slice(1).forEach((row) => {
+    values.slice(1).forEach((row) => {
+      rowData = {
+        "branchcode":"",
+        "biblionumber":"",
+        "no_abonnement_koha":"",
+        "numero":"",
+        "date_parution":"",
+        "date_reception":"",
+        "statut_arrive_manquant":"",
+        "Localisation":"",
+        "Cote":"",
+      }
+      Object.keys(headers).forEach((key) => {
+        if (thisSheetColIndex[key] !== -1) {
+          rowData[key] = row[thisSheetColIndex[key]];
+        }
+      })
+      // |||| I need to test this. In theory, now I can jsut call rowData["branchcode"] isntead of other the getData function
       // -------- Set up utils for the loop --------
       // ---- Function definition ----
       function getData(name) {
         // Return the value of a column for this row
-        return row[colIndex[name]]
+        return rowData[name]
       }
       function fix(colName, value) {
         // Changes the cell inside the data container
-        row[colIndex[colName]] = value;
+        rowData[colName] = value;
       }
       function reportThis(gravity,type,message) {
         appendToReport(gravity,sheetName,data.length+1,type,message);
@@ -188,8 +229,20 @@ function main(workbook: ExcelScript.Workbook) {
         }
       })
 
-      // -------- Push the row to the data container -------- 
-      data.push(row)
+      // -------- Push the row to the data container --------
+      data.push(
+        [
+          getData("branchcode"),
+          getData("biblionumber"),
+          getData("no_abonnement_koha"),
+          getData("numero"),
+          getData("date_parution"),
+          getData("date_reception"),
+          getData("statut_arrive_manquant"),
+          getData("Localisation"),
+          getData("Cote")
+        ]
+      )
     })
   });
 
@@ -210,7 +263,7 @@ function main(workbook: ExcelScript.Workbook) {
   data.forEach((row, index) => {
     function getData(name) {
       // Return the value of a column for this row
-      return row[colIndex[name]]
+      return row[headers[name].index]
     }
     function reportThis(gravity,type,message) {
       // This is going to be awkward if there is no branchcode, but anyway this should not hapen. And we have the index
@@ -221,7 +274,7 @@ function main(workbook: ExcelScript.Workbook) {
     let currentColName = "biblionumber";
     if ((getData(currentColName) != mainBibnb) && (mainBibnb !== null)) {
       reportThis(LOG.WAR,"Biblionumber différent du biblionumber principal","Ancienne valeur : " + getData(currentColName));
-      row[colIndex[currentColName]] = mainBibnb;
+      row[headers[currentColName].index] = mainBibnb;
     }
 
     // -------- Check missing vital data --------
