@@ -8,6 +8,7 @@ _Note : dans OneDrive, créer un dossier dédié avant._
 
 * 1) Déclencheur : _OneDrive for Business : When a file is modified (properties only)_ :
   * _Folder_ : le dossier dédié créé
+  * _Advanced parameters_ → _Include subfolders_ : _Yes__
 * 2) _Condition_ :
   * Utiliser l'opérateur _Or_
   * 1. _Name_ (de l'étape précédente) → _ends with_ → _.ts_
@@ -34,7 +35,8 @@ Dans _True_ :
 
 5) _OneDrive for Business : Create file_ :
 
-* _Folder path_ : le dossier dédié créé
+* _Folder path_ : `substring(triggerOutputs()?['body/Path'], 0, lastIndexOf(triggerOutputs()?['body/Path'], '/'))`
+  * `triggerOutputs()?['body/Path']` = _Path_ de la première étape
 * _File Name_ : `concat(triggerOutputs()?['body/NameNoExt'], '.osts')
   * `triggerOutputs()?['body/NameNoExt']` = _Name without extension_ de la première étape
 * _File Content_ : l'output de l'étape précédente
