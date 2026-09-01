@@ -57,5 +57,6 @@ function main(workbook: ExcelScript.Workbook) {
   addDataToReport();
   sheetMerged.getUsedRange().clear();
   sheetMerged.getRange("A:I").setNumberFormatLocal("@");
+  data.unshift(["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote","sheetName"]);
   sheetMerged.getRangeByIndexes(0,0,data.length,data[0].length).setValues(data);
 }

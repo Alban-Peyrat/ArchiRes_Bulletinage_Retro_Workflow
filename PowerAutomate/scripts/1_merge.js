@@ -51,7 +51,8 @@ function main(workbook: ExcelScript.Workbook) {
   
   // --------------- Set up worksheets ---------------
   // Add headers on relevent sheets
-  addLines(SHEETS.MERGED, [["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote","sheetName"]]);
+  // don't add to merged yet, it's less of a pain to add it at the end
+  // addLines(SHEETS.MERGED, [["branchcode","biblionumber","no_abonnement_koha","numero","date_parution","date_reception","statut_arrive_manquant","Localisation","Cote","sheetName"]]);
   appendToReport("Gravité","Feuille","Numero de ligne","Type","Message");
 
   // --------------- Prepare loops ---------------
