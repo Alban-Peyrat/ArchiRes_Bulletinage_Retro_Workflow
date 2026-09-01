@@ -32,6 +32,12 @@ function appendToReport(gravity,sheetName,index,type,message) {
 function main(workbook: ExcelScript.Workbook) {
   const originalSheetCount = workbook.getWorksheets().length; // Store now the original sheet count
   // --------------- Create all worksheets ---------------
+  // This is mostly for tests but I guess it's also a sefaty ?
+  ["Erreurs","Fusionnee"].forEach((name) => {
+    if ((workbook.getWorksheet(name))) {
+      workbook.getWorksheet(name).delete();
+    }
+  })
   const SHEETS = {
     REPORT:{sheet:workbook.addWorksheet("Erreurs"),rowIndex:0},
     MERGED:{sheet:workbook.addWorksheet("Fusionnee"),rowIndex:0},
@@ -109,7 +115,7 @@ function main(workbook: ExcelScript.Workbook) {
       }
       Object.keys(headers).forEach((key) => {
         if (thisSheetColIndex[key] !== -1) {
-          rowData[key] = row[thisSheetColIndex[key]];
+          rowData[key] = String(row[thisSheetColIndex[key]]);
         }
       })
 
@@ -124,7 +130,8 @@ function main(workbook: ExcelScript.Workbook) {
           rowData["date_reception"],
           rowData["statut_arrive_manquant"],
           rowData["Localisation"],
-          rowData["Cote"]
+          rowData["Cote"],
+          rowData["sheetName"]
         ]
       )
     })
@@ -140,5 +147,6 @@ function main(workbook: ExcelScript.Workbook) {
 
   // --------------- Add data to the worksheets ---------------
   addLines(SHEETS.REPORT, reportData);
+  SHEETS.MERGED.sheet.getRange("A:I").setNumberFormatLocal("@");
   addLines(SHEETS.MERGED, data);
 }
