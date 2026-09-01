@@ -24,7 +24,7 @@ Circuit :
 1. Alice analyse [le résultat du script](./fichier_resultat_PowerAutomate.md) disponible dans SharePoint :
     * Les `INFO` sont ignorables
     * Les `WARNING` doivent être lus mais ne nécessitent aucune action sauf si le traitement effectué par le script est erroné
-    * Les `ERROR` doivent être traitées dans le fichier original Google Sheets par Alice ou l'équipe de la bibliothèque concernée
+    * Les `ERROR` & `FATAL` doivent être traitées dans le fichier original Google Sheets par Alice ou l'équipe de la bibliothèque concernée
     * _Retourner à l'étape de dépôt du fichier dans SharePoint jusqu'à ce que le script de renvoie plus d'`ERROR`_
 1. Alice notifie Bob que le fichier est prêt
 1. Bob télécharge le résultat du script

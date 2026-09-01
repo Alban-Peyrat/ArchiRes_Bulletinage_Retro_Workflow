@@ -29,7 +29,7 @@ function main(workbook: ExcelScript.Workbook) {
   reportUsedRange.getFormat().autofitColumns();
   // -------- Color gravity --------
   // Still Copilot stuff cleaned up
-  [[LOG.ERR,"#FFC7CE"], [LOG.WAR,"#FFEB9C"]].forEach((tuple) => {
+  [[LOG.FAT,"#FFC7CE"],[LOG.ERR,"#FFC7CE"], [LOG.WAR,"#FFEB9C"]].forEach((tuple) => {
     let rule = reportUsedRange.addConditionalFormat(
       ExcelScript.ConditionalFormatType.containsText
     );

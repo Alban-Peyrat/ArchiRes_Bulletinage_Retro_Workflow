@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2]
+
 ### Correctifs
 
 * Les valeurs sont désormais récupérées comme elles sont affichées plutôt que par leur valeur interne (notamment pour que Excel arrête de convertir tout et n'importe quoi en date)

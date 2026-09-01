@@ -6,13 +6,18 @@ Le fichier est une copie du fichier original avec 3 nouvelles feuilles :
 * _Erreurs_ : contient [la liste des erreurs](#liste-des-erreurs-possibles)
 * _Fusionnee_ : contient toutes les données fusionnées. C'est la feuille qui est ensuite utilisée pour générer le fichier final
 
-Les erreurs sont classées selon 3 niveaux de gravité :
+Les erreurs sont classées selon 4 niveaux de gravité :
 
+* `[0] FATAL` : le problème doit être traité et empêche certaines étapes du script de s'effectuer correctement
 * `[1] ERROR` : le problème doit être traité
 * `[2] WARNING` : le problème doit être lu mais ne nécessite aucune action sauf si la résolution effectuée par le script est mauvaise
 * `[3] INFO` : le problème peut être ignoré
 
 ## Liste des erreurs possibles
+
+`[0] FATAL` :
+
+* _Colonnes vitales manquantes_ : le script n'a pas trouvé une des colonnes contenant des informations obligatoires
 
 `[1] ERROR` :
 
@@ -25,6 +30,7 @@ Les erreurs sont classées selon 3 niveaux de gravité :
 `[2] WARNING` :
 
 * _Biblionumber différent du biblionumber principal_ : au moins 80% des fascicules contiennent le même biblionumber, cependant cette ligne contenait un biblionumber différent : il a été corrigé
+* _Colonnes facultatives manquantes_ : le script n'a pas trouvé une des colonnes contenant des informations facultatives
 * _Correction de la localisation_ : le fascicule contient une localisation mais elle n'était pas correctement écrite : elle a été corrigée
 * _Branchcode différent du nom de la feuille_ : le branchcode du fascicule ne correspond pas au nom de la feuille : il a été remplacé par le nom de la feuille
 
