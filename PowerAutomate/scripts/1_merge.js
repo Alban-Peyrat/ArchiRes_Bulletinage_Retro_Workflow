@@ -30,7 +30,6 @@ function appendToReport(gravity,sheetName,index,type,message) {
 // ------------------------------------------------------------
 // Do not ever remove ": ExcelScript.Workbook" or the script will fail
 function main(workbook: ExcelScript.Workbook) {
-  const originalSheetCount = workbook.getWorksheets().length; // Store now the original sheet count
   // --------------- Create all worksheets ---------------
   // This is mostly for tests but I guess it's also a sefaty ?
   ["Erreurs","Fusionnee"].forEach((name) => {
@@ -57,6 +56,7 @@ function main(workbook: ExcelScript.Workbook) {
 
   // --------------- Prepare loops ---------------
   const data = []; // Will hold all the data until added to the sheet
+  const originalSheetCount = workbook.getWorksheets().length;
   let processedSheets = 0; // Tracks number of sheets actually processed
 
   // Loop through each sheet
@@ -68,7 +68,7 @@ function main(workbook: ExcelScript.Workbook) {
     }
     processedSheets++;
 
-    let values = sheet.getUsedRange().getValues();
+    let values = sheet.getUsedRange().getTexts();
 
     // Get column index in this sheet
     let thisSheetColIndex = {};
@@ -139,10 +139,10 @@ function main(workbook: ExcelScript.Workbook) {
 
   // --------------- Report sheet processing ---------------
   // Check if sheets logic is fine. Should be originl count - 2 sheets because of "Modèle" & "Etat dépouillement"
-  if ((originalSheetCount-2) == processedSheets) {
+  if ((originalSheetCount-4) == processedSheets) {
     appendToReport(LOG.INF, "Fusionnee",-9,"Nombre d'écoles traitées","Total : " + processedSheets)
   } else {
-    appendToReport(LOG.ERR, "Fusionnee",-9,"Nombre d'écoles traitées","Total : " + processedSheets + "(nombre attendu : " + (originalSheetCount-2) + ")")
+    appendToReport(LOG.ERR, "Fusionnee",-9,"Nombre d'écoles traitées","Total : " + processedSheets + "(nombre attendu : " + (originalSheetCount-4) + ")")
   }
 
   // --------------- Add data to the worksheets ---------------

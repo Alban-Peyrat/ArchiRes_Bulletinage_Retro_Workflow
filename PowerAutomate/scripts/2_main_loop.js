@@ -85,7 +85,7 @@ function main(workbook: ExcelScript.Workbook) {
   // --------------- Variables ---------------
   const sheetMerged = workbook.getWorksheet("Fusionnee");
   const reportData = [];
-  const data = sheetMerged.getUsedRange().getValues(); // Will hold all the data until added to the sheet
+  const data = sheetMerged.getUsedRange().getTexts(); // Will hold all the data until added to the sheet
   const bibnbCount = {}; // Tracks each bibnb apparition and how much of them exists
 
   // --------------- Define workbook functions ---------------
