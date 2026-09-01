@@ -12,14 +12,16 @@ const colIndex = {
   "Cote":8,
   "sheetName":9
 }
+const reversedColIndex = Object.fromEntries(Object.entries(colIndex).map(([key, value]) => [value, key]));
+const mandatoryCols = ["branchcode","biblionumber","numero","date_parution","date_reception","statut_arrive_manquant"];
+const mandatoryColsIndex = [];
+mandatoryCols.forEach((colName) => {
+  mandatoryColsIndex.push(colIndex[colName]);
+})
+
 
 // Do not ever remove ": ExcelScript.Workbook" or the script will fail
 function main(workbook: ExcelScript.Workbook) {
-  // --------------- Check if this step should execute ---------------
-  const mainBibnb = workbook.getWorksheet("PowerAutomateHidden").getRange("A1").getText();
-  if (mainBibnb == "") {
-    return
-  }
   // --------------- Variables ---------------
   const sheetMerged = workbook.getWorksheet("Fusionnee");
   const data = sheetMerged.getUsedRange().getTexts(); // Will hold all the data until added to the sheet
@@ -41,21 +43,18 @@ function main(workbook: ExcelScript.Workbook) {
     function reportThis(gravity,type,message) {
       reportData.push([gravity,sheetName,index+1,type,message]);
     }
-    let currentColName = null; // Temp just to avoid writing a billion times the same string
-    let currentColVal = null; // Temp just to avoid writing a billion times the same string
-
-    // -------- Force biblionumber if 80% has the same --------
-    currentColName = "biblionumber";
-    currentColVal = getData(currentColName);
-    if (currentColVal != mainBibnb) {
-      reportThis(LOG.WAR,"Biblionumber différent du biblionumber principal","Ancienne valeur : " + currentColVal);
-      row[colIndex[currentColName]] = mainBibnb;
+    // -------- Check missing vital data --------
+    let missingData = [];
+    mandatoryColsIndex.forEach((colIndex) => {
+      if (row[colIndex] == "") {
+        missingData.push(reversedColIndex[colIndex]);
+      }
+    })
+    if (missingData.length > 0) {
+      reportThis(LOG.ERR,"Informations vitales absentes","Colonnes : " + missingData.join(", "));
     }
   })
 
   // --------------- Add data to the worksheets ---------------
   addDataToReport();
-  sheetMerged.getUsedRange().clear();
-  sheetMerged.getRange("A:I").setNumberFormatLocal("@");
-  sheetMerged.getRangeByIndexes(0,0,data.length,data[0].length).setValues(data);
 }
